@@ -1,0 +1,304 @@
+\documentclass[10pt]{beamer}
+
+\usepackage[spanish,activeacute]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage{eurosym}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{lmodern}
+\usepackage{enumerate}
+
+
+
+\def\X{\ve{X}}
+\def\x{\ve{x}}
+\def\z{\ve{z}}
+\def\y{\ve{y}}
+
+\newcommand{\p}[1]{p_{_{#1}}} %pdf or pmf
+
+\definecolor{darkblue}{rgb}{0.0, 0.0, 0.55}
+\setbeamercolor{title}{fg=darkblue}
+\setbeamercolor{frametitle}{fg=darkblue}
+\newcommand{\myitem}{\item[$\bullet$]}
+\definecolor{darkgreen}{rgb}{0, 0.55, 0}
+\definecolor{darkred}{rgb}{0.55, 0,0}
+
+\usepackage{tikz}
+\usetikzlibrary{fit,positioning}
+\usetikzlibrary{shapes,matrix,decorations.markings,arrows}
+\usetikzlibrary{graphs}
+\newcommand{\ve}[1]{\boldsymbol{#1}}
+\newcommand{\set}[1]{\mathcal{#1}}
+    \usetikzlibrary{chains,positioning}
+    \usepackage{mathtools}
+
+\newcommand{\noteB}[1]{\textbf{\textcolor{darkblue}{#1}}}
+
+\newcommand{\noteR}[1]{\textbf{\textcolor{darkred}{#1}}}
+
+\newcommand{\noteG}[1]{\textbf{\textcolor{darkgreen}{#1}}}
+
+\newcommand{\mes}[2]{m_{#1\rightarrow#2}}
+\newcommand{\logmes}[2]{l_{#1\rightarrow#2}}
+\newcommand{\Iset}[1]{\mathtt{#1}} %Index set
+
+\usepackage{bbm}
+
+\setbeamertemplate{navigation symbols}{\usebeamerfont{footline} \insertframenumber/\inserttotalframenumber}
+\logo{\includegraphics[scale=0.04]{logouc3m.eps}}
+
+\title{Parameter learning with EM for discrete BNs}
+\author{Pablo M. Olmos, olmos@tsc.uc3m.es}
+\date{Course on Bayesian Networks,  November 2016}
+
+%\AtBeginSection{\frame{\tableofcontents[currentsection]}}
+\AtBeginSection{\frame{\sectionpage}}
+%\AtBeginSubsection{\frame{\subsectionpage}}
+\AtBeginSubsection{\frame{\frametitle{Bayessian Networks}\tableofcontents[currentsection,currentsubsection]}}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{Index}
+\tableofcontents
+\end{frame}
+
+
+\section{Learning parameters with full observations}
+
+\begin{frame}{Motivation}
+
+\begin{itemize}
+\item Let $X_j\in\set{X}$, $j=1,\ldots,5$, be discrete R.V., where $K\doteq|\set{X}|$
+\item Consider the following BN:
+\end{itemize}
+\begin{align*}
+p(\x)=p(x_1)p(x_2|x_1)p(x_4)p(x_3|x_2,x_4)p(x_5|x_4)p(x_6|x_2)
+\end{align*}
+\begin{figure}
+\centering
+\begin{tikzpicture}[scale=0.8]
+\tikzstyle{factor}=[rectangle,minimum size = 3mm, thick, draw =black,fill=black]
+\tikzstyle{var}=[circle,minimum size = 3mm, thick, draw =black,fill=black]
+\tikzstyle{var2}=[circle, thick, draw =black]
+\tikzstyle{second}=[circle, minimum size = 10mm, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{arrow}=[draw, -latex] 
+
+\draw[step=5cm];
+	\node[var2] (x_1) at (-1,0) []{$x_1$};
+	\node[var2] (x_2) at (1,0) []{$x_2$};
+	\node[var2] (x_3) at (3,0) []{$x_3$};
+	\node[var2] (x_4) at (3,-2) []{$x_4$};
+	\node[var2] (x_5) at (5,-2) []{$x_5$};
+	\node[var2] (x_6) at (1,-2) []{$x_6$};
+	
+	\path [arrow]
+		(x_1) edge []  (x_2)
+		(x_2) edge []  (x_3)
+		(x_2) edge []  (x_6)
+		(x_4) edge []  (x_3)
+		(x_4) edge []  (x_5);
+				
+\end{tikzpicture}
+\end{figure}
+
+\begin{itemize}
+\item \noteG{BN structure is known}, \noteR{CPD tables are unknown}. 
+\item Our goal is to \noteB{estimate the CPD tables from $N$ independent samples} $\x_1,\x_2,\ldots,\x_N$,  drawn from $p(\x)$.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Log-Likelihood of data (I)}
+\begin{itemize}
+\item Let $\x\in\mathcal{X}^V$ be a discrete R.V. such that $p(\x)=\prod_{t=1}^{V}p(x_t|\x_{\text{pa}(t)})$. 
+\item Consider $N$ independent samples $\mathcal{D}=\{\x_i\}_{i=1}^{N}$. For each sample, we can write each 
+$p(x_t|\x_{\text{pa}(t)})$ term, $t=1,\ldots,V$ as follows:
+\begin{align*}
+p(x_{it}|\x_{i,\text{pa}(t)})=\color{darkgreen}{}\prod_{c=1}^{K_{\text{pa}(t)}}\color{darkblue}{}\prod_{k=1}^{K_t}\color{darkred}{}\theta_{tck}^{\mathbbm{1}[x_{it}=k,\x_{i,\text{pa}(t)}=c]}
+\end{align*}
+\item \noteG{$\prod_{c=1}^{K_{\text{pa}(t)}}$} $\rightarrow$ product over all possible values of $\x_{i,\text{pa}(t)}$.
+\item \noteB{$\prod_{k=1}^{K}$} $\rightarrow$ product over all possible values of $x_{i,t}$.
+\item \noteR{$\theta_{tck}^{\mathbbm{1}[x_{it}=k,\x_{i,\text{pa}(t)}=c]}$} $\rightarrow$ equal to $\theta_{tck}$ if $x_{it}=k$, and $\x_{i,\text{pa}(t)}=c$. Thus,
+$$ p(x_t=k|\x_{\text{pa}(t)}=c)\doteq \theta_{tck}$$
+\item Note that $\sum_{k=1}^{K_t}\theta_{tck}=1$.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Log-Likelihood of data (II)}
+\begin{itemize}
+\item The log-likelihood of the complete data is given by
+\begin{align*}
+\log p(\mathcal{D}|\ve{\theta})=\sum_{t=1}^{V}\sum_{c=1}^{K_{\text{pa}(t)}}\sum_{k=1}^{K_t} \color{darkgreen} N_{tck} \color{black}{}\log \theta_{tck}
+\end{align*}
+where
+\begin{align*}
+\color{darkgreen} N_{tck} =\sum_{i=1}^{N}\mathbbm{1}[x_{it}=k,\x_{i,\text{pa}(t)}=c]
+\end{align*}
+are the empirical counts.
+\item Log-likelihood is maximized if we take
+\begin{align*}
+\hat{\theta}_{tck}=\frac{N_{tck}}{\sum_{k'=1}^{K_t} N_{tck'}}
+\end{align*}
+\item \noteR{ML solution is very simple! We calculate frequencies!}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{MAP solution}
+\begin{itemize}
+\item Dirichlet prior over $\ve{\theta}_{tc}=[\theta_{tc1}, \theta_{tc2}, \ldots, \theta_{tcK_t}]$:
+\begin{align*}
+\ve{\theta}_{tc} \sim \text{Dir}\left[\alpha_{tc1}, \alpha_{tc2}, \ldots, \alpha_{tcK_t}\right]
+\end{align*}
+\item It is easy to show that $p(\ve{\theta}_{tc}|\mathcal{D})$ is another Dirichlet distribution with parameters
+\begin{align*}
+\ve{\theta}_{tc} \sim \text{Dir}\left[\alpha_{tc1}+N_{tc1}, \alpha_{tc2}+N_{tc2}, \ldots, \alpha_{tcK_t}+N_{tcK_t}\right]
+\end{align*}
+\item The mean of $\theta$ w.r.t. the posterior distribution is
+\begin{align*}
+\mathbb{E}_{p(\ve{\theta}_{tc}|\mathcal{D})}[\theta_{tck}]=\frac{\alpha_{tck}+N_{tck}}{\sum_{k'=1}^{K_t} \alpha_{tck'}+N_{tck'}}
+\end{align*}
+\item $\theta_{tck}$ act as \emph{pseudocounts}, avoiding to assign zero probability to unobserved outcomes in our data
+\end{itemize}
+
+
+\end{frame}
+
+\section{Learning with partial observations}
+
+
+\begin{frame}{Motivation}
+
+\begin{itemize}
+\item Let $X_j\in\set{X}$, $j=1,\ldots,5$, be discrete R.V., where $K\doteq|\set{X}|$
+\item Consider the following BN:
+\end{itemize}
+\begin{align*}
+p(\x)=p(x_1)p(x_2|x_1)p(x_4)p(x_3|x_2,x_4)p(x_5|x_4)p(x_6|x_2)
+\end{align*}
+\begin{figure}
+\centering
+\begin{tikzpicture}[scale=0.8]
+\tikzstyle{factor}=[rectangle,minimum size = 3mm, thick, draw =black,fill=black]
+\tikzstyle{var}=[circle,minimum size = 3mm, thick, draw =black,fill=black]
+\tikzstyle{var2}=[circle, thick, draw =black]
+\tikzstyle{var3}=[circle, thick, draw =black,fill=gray]
+\tikzstyle{second}=[circle, minimum size = 10mm, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{arrow}=[draw, -latex] 
+
+\draw[step=5cm];
+	\node[var3] (x_1) at (-1,0) []{$x_1$};
+	\node[var2] (x_2) at (1,0) []{$x_2$};
+	\node[var2] (x_3) at (3,0) []{$x_3$};
+	\node[var3] (x_4) at (3,-2) []{$x_4$};
+	\node[var3] (x_5) at (5,-2) []{$x_5$};
+	\node[var2] (x_6) at (1,-2) []{$x_6$};
+	
+	\path [arrow]
+		(x_1) edge []  (x_2)
+		(x_2) edge []  (x_3)
+		(x_2) edge []  (x_6)
+		(x_4) edge []  (x_3)
+		(x_4) edge []  (x_5);
+				
+\end{tikzpicture}
+\end{figure}
+
+\begin{itemize}
+\item \noteG{BN structure is known}, \noteR{CPD tables are unknown}. 
+\item Our goal is to \noteB{estimate the CPD tables from $N$ independent samples} $\x_1,\x_2,\ldots,\x_N$,  drawn from $p(\x)$.
+\item Only a few elements of $\x$ are observed!
+\end{itemize}
+
+\end{frame}
+
+\frame{
+\frametitle{EM in a nutshell}
+
+\begin{itemize}
+\item $p(\y_i,\x_i|\ve{\theta})$, where $\y_i$ is observed and $\x_i$ is hidden, $i=1,\ldots,N$. 
+\item Our goal is to estimate $\ve{\theta}$ to maximize $p(\mathcal{D}|\ve{\theta})$ (ML) or as the mode of the posterior distribution $p(\ve{\theta}|\mathcal{D})$. \noteR{Complex! We have to marginalize first over $\x_i$, $i=1,\ldots,N$.}
+\item EM algorithm. Initialize $\ve{\theta}$ to $\ve{\theta}^0$. For $\ell=1,2, \ldots$
+\begin{enumerate}
+\item \noteG{E-step}: 
+\begin{align*}
+Q(\ve{\theta},\ve{\theta}^{\ell-1})&=\sum_{i=1}^{N}\int_{\x_i} p(\x_i|\y_i,\ve{\theta}^{\ell-1}) \log \left(p(\x_i,\y_i|\ve{\theta})\right) \text{d}\ve{x}_i\\&=\sum_{i=1}^{N}\mathbb{E}_{p(\x_i|\y_i,\ve{\theta}^{\ell-1})}[\log \left(p(\x_i,\y_i|\ve{\theta}\right)]
+\end{align*}
+\item \noteB{M-step}: 
+\begin{align*}
+\ve{\theta}^{\ell}&=\arg\text{max}_{\ve{\theta}} ~Q(\ve{\theta},\ve{\theta}^{\ell-1}) \qquad (\text{ML estimation})\\\\
+\ve{\theta}^{\ell}&=\arg\text{max}_{\ve{\theta}} ~Q(\ve{\theta},\ve{\theta}^{\ell-1}) +\log p(\ve{\theta}) \qquad (\text{MAP estimation})
+\end{align*}
+\end{enumerate}
+\end{itemize}
+
+
+}
+
+\frame{
+\frametitle{EM for discrete BNs (I)}
+\begin{itemize}
+\item $\y_i\rightarrow$ Set of observed variables for $i$-th data, $i=1, \ldots, N$.
+\item The log-likelihood of the complete data is given by
+\begin{align*}
+\log p(\{\y_i,\x_i\}_{i=1}^N\|\ve{\theta})=\sum_{t=1}^{V}\sum_{c=1}^{K_{\text{pa}(t)}}\sum_{k=1}^{K_t} \color{darkgreen} N_{tck} \color{black}{}\log \theta_{tck}
+\end{align*}
+where
+\begin{align*}
+\color{darkgreen} N_{tck} =\sum_{i=1}^{N}\mathbbm{1}[x_{it}=k,\x_{i,\text{pa}(t)}=c]
+\end{align*}
+\end{itemize}
+}
+
+\frame{
+\frametitle{EM for discrete BNs (II)}
+\begin{itemize}
+\item \noteG{E-step}: 
+\begin{align*}
+Q(\ve{\theta},\ve{\theta}^{\ell-1})&=\sum_{i=1}^{N}\sum_{c=1}^{K_{\text{pa}(t)}}\sum_{k=1}^{K_t} \widetilde{N_{tck}} \log \theta_{tck} 
+\end{align*}
+where
+\begin{align*}
+\widetilde{N_{tck}}&=\sum_{i=1}^{N}\mathbb{E}\left[\mathbbm{1}[x_{it}=k,\x_{i,\text{pa}(t)}=c]\right]\\
+&=\sum_{i=1}^{N} p(x_{it}=k,\x_{i,\text{pa}(t)}=c|\y_i,\boldsymbol{\theta}^{\ell-1})
+\end{align*}
+\item Thus, given each pair $(\x_i,\y_i)$, we simply have to compute the marginal joint probabilities $p(x_{it}=k,\x_{i,\text{pa}(t)}=c|\y_i)$, $t=1,\ldots,V$.
+\item We will use \noteB{Belief Propagation for this task!}
+\end{itemize}
+}
+
+\frame{
+\frametitle{EM for discrete BNs (III)}
+\begin{itemize}
+\item \noteG{M-step}: 
+\begin{align*}
+\hat{\theta}_{tck}&=\frac{\widetilde{N_{tck}}}{\sum_{k'=1}^{K_t} \widetilde{N_{tck'}}} \qquad (\text{ML estimation})\\\\
+\hat{\theta}_{tck}&=\frac{\alpha_{tck}+\widetilde{N_{tck}}}{\sum_{k'=1}^{K_t} \alpha_{tck'}+\widetilde{N_{tck'}}} \qquad (\text{MAP estimation})
+\end{align*}
+\end{itemize}
+
+
+}
+
+
+
+
+
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

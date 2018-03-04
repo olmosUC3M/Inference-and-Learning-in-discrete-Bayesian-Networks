@@ -1,0 +1,7 @@
+\beamer@endinputifotherversion {3.36pt}
+\select@language {spanish}
+\beamer@sectionintoc {1}{Discrete Inference using Belief Propagation}{3}{0}{1}
+\beamer@sectionintoc {2}{Inference in Gaussian Linear BNs}{15}{0}{2}
+\beamer@sectionintoc {3}{Approximate Inference}{21}{0}{3}
+\beamer@sectionintoc {4}{References}{23}{0}{4}
+\beamer@sectionintoc {5}{Software}{25}{0}{5}
